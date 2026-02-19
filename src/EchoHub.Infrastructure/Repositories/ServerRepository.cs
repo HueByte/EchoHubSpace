@@ -48,11 +48,19 @@ public class ServerRepository(AppDbContext context) : IServerRepository
         return true;
     }
 
+    public async Task<IEnumerable<Server>> GetStaleOnlineAsync(TimeSpan threshold)
+    {
+        var cutoff = DateTime.UtcNow - threshold;
+        return await context.Servers
+            .Where(s => s.IsOnline && s.LastSeenAt < cutoff)
+            .ToListAsync();
+    }
+
     public async Task RemoveInactiveAsync(TimeSpan offlineThreshold)
     {
         var cutoff = DateTime.UtcNow - offlineThreshold;
         var inactive = await context.Servers
-            .Where(s => s.LastSeenAt < cutoff)
+            .Where(s => !s.IsOnline && s.LastSeenAt < cutoff)
             .ToListAsync();
 
         if (inactive.Count > 0)

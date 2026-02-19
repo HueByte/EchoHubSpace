@@ -76,6 +76,15 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return MapToDto(server);
     }
 
+    public async Task RefreshLastSeenAsync(string host)
+    {
+        var server = await serverRepository.GetByHostAsync(host);
+        if (server is null) return;
+
+        server.LastSeenAt = DateTime.UtcNow;
+        await serverRepository.UpdateAsync(server);
+    }
+
     public async Task SetServerOfflineAsync(string host)
     {
         var server = await serverRepository.GetByHostAsync(host);

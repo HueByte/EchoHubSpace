@@ -58,6 +58,33 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     }
 
     /// <summary>
+    /// Called by an EchoHub server in response to an alive check (Ping).
+    /// Refreshes LastSeenAt to confirm the server is still responsive.
+    /// </summary>
+    public async Task Heartbeat()
+    {
+        if (!ConnectionToHost.TryGetValue(Context.ConnectionId, out var host))
+            return;
+
+        using var scope = scopeFactory.CreateScope();
+        var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
+        await serverService.RefreshLastSeenAsync(host);
+
+        logger.LogDebug("Heartbeat received from {Host} (connection {ConnectionId})", host, Context.ConnectionId);
+    }
+
+    /// <summary>
+    /// Returns all tracked connection IDs for a given host.
+    /// Used by the cleanup service to send alive checks.
+    /// </summary>
+    public static IEnumerable<string> GetConnectionIdsForHost(string host)
+    {
+        return ConnectionToHost
+            .Where(kvp => kvp.Value == host)
+            .Select(kvp => kvp.Key);
+    }
+
+    /// <summary>
     /// Called by web clients to join the broadcast group for real-time updates.
     /// </summary>
     public async Task JoinWebClients()
