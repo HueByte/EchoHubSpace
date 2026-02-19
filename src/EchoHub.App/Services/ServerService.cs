@@ -45,6 +45,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             existing.Description = dto.Description;
             existing.UserCount = dto.UserCount;
             existing.IsOnline = true;
+            existing.LastSeenAt = DateTime.UtcNow;
             await serverRepository.UpdateAsync(existing);
             return MapToDto(existing);
         }
@@ -57,6 +58,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             Host = dto.Host,
             UserCount = dto.UserCount,
             IsOnline = true,
+            LastSeenAt = DateTime.UtcNow,
         };
 
         var created = await serverRepository.AddAsync(server);

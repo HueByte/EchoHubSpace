@@ -47,4 +47,18 @@ public class ServerRepository(AppDbContext context) : IServerRepository
             await context.SaveChangesAsync();
         }
     }
+
+    public async Task RemoveInactiveAsync(TimeSpan offlineThreshold)
+    {
+        var cutoff = DateTime.UtcNow - offlineThreshold;
+        var inactive = await context.Servers
+            .Where(s => !s.IsOnline && s.LastSeenAt < cutoff)
+            .ToListAsync();
+
+        if (inactive.Count > 0)
+        {
+            context.Servers.RemoveRange(inactive);
+            await context.SaveChangesAsync();
+        }
+    }
 }

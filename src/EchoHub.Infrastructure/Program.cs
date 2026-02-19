@@ -32,6 +32,7 @@ try
 
     builder.Services.AddScoped<IServerRepository, ServerRepository>();
     builder.Services.AddScoped<IServerService, ServerService>();
+    builder.Services.AddHostedService<EchoHub.Infrastructure.Services.InactiveServerCleanupService>();
 
     builder.Services.AddCors(options =>
     {

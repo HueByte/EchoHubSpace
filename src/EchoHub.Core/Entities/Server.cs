@@ -8,5 +8,6 @@ public class Server
     public required string Host { get; set; }
     public int UserCount { get; set; }
     public bool IsOnline { get; set; }
+    public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

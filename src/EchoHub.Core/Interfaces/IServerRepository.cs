@@ -10,4 +10,5 @@ public interface IServerRepository
     Task<Server> AddAsync(Server server);
     Task UpdateAsync(Server server);
     Task DeleteAsync(Guid id);
+    Task RemoveInactiveAsync(TimeSpan offlineThreshold);
 }
