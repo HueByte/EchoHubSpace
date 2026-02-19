@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="EchoHub.App/EchoHub.App.csproj" />
+  <Project Path="EchoHub.Core/EchoHub.Core.csproj" />
+  <Project Path="EchoHub.Infrastructure/EchoHub.Infrastructure.csproj" />
+</Solution>
