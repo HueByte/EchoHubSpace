@@ -10,5 +10,5 @@ public interface IServerService
     Task<ServerDto> RegisterServerAsync(RegisterServerDto dto);
     Task<ServerDto?> UpdateUserCountAsync(string host, int userCount);
     Task SetServerOfflineAsync(string host);
-    Task DeleteServerAsync(Guid id);
+    Task<bool> DeleteServerAsync(Guid id);
 }

@@ -87,9 +87,9 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         }
     }
 
-    public async Task DeleteServerAsync(Guid id)
+    public async Task<bool> DeleteServerAsync(Guid id)
     {
-        await serverRepository.DeleteAsync(id);
+        return await serverRepository.DeleteAsync(id);
     }
 
     private static ServerDto MapToDto(Server server) =>

@@ -8,20 +8,32 @@ namespace EchoHub.Infrastructure.Hubs;
 
 public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> logger) : Hub
 {
-    // Maps connectionId -> host so we can mark servers offline on disconnect
-    private static readonly ConcurrentDictionary<string, string> ConnectedServers = new();
+    // Maps connectionId -> host for reverse lookup on disconnect
+    private static readonly ConcurrentDictionary<string, string> ConnectionToHost = new();
+
+    // Tracks active connection count per host so we only go offline when all connections drop
+    private static readonly ConcurrentDictionary<string, int> HostConnectionCount = new();
+
+    private static readonly object Lock = new();
 
     /// <summary>
     /// Called by an EchoHub server to register/update itself on the server list.
     /// </summary>
     public async Task RegisterServer(RegisterServerDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Host) || string.IsNullOrWhiteSpace(dto.Name))
+            return;
+
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
         var server = await serverService.RegisterServerAsync(dto);
 
-        ConnectedServers[Context.ConnectionId] = dto.Host;
+        ConnectionToHost[Context.ConnectionId] = dto.Host;
+        lock (Lock)
+        {
+            HostConnectionCount.AddOrUpdate(dto.Host, 1, (_, count) => count + 1);
+        }
 
         logger.LogInformation("Server registered: {Name} at {Host} (connection {ConnectionId})",
             dto.Name, dto.Host, Context.ConnectionId);
@@ -34,7 +46,7 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     /// </summary>
     public async Task UpdateUserCount(int userCount)
     {
-        if (!ConnectedServers.TryGetValue(Context.ConnectionId, out var host))
+        if (!ConnectionToHost.TryGetValue(Context.ConnectionId, out var host))
             return;
 
         using var scope = scopeFactory.CreateScope();
@@ -55,17 +67,33 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (ConnectedServers.TryRemove(Context.ConnectionId, out var host))
+        if (ConnectionToHost.TryRemove(Context.ConnectionId, out var host))
         {
-            logger.LogInformation("Server disconnected: {Host} (connection {ConnectionId})",
-                host, Context.ConnectionId);
+            bool shouldGoOffline;
+            lock (Lock)
+            {
+                var remaining = HostConnectionCount.AddOrUpdate(host, 0, (_, count) => count - 1);
+                shouldGoOffline = remaining <= 0;
+                if (shouldGoOffline)
+                    HostConnectionCount.TryRemove(host, out _);
+            }
 
-            using var scope = scopeFactory.CreateScope();
-            var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
+            if (shouldGoOffline)
+            {
+                logger.LogInformation("Server offline: {Host} (last connection {ConnectionId} dropped)",
+                    host, Context.ConnectionId);
 
-            await serverService.SetServerOfflineAsync(host);
+                using var scope = scopeFactory.CreateScope();
+                var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-            await Clients.Group("web-clients").SendAsync("ServerOffline", new { Host = host });
+                await serverService.SetServerOfflineAsync(host);
+                await Clients.Group("web-clients").SendAsync("ServerOffline", new { Host = host });
+            }
+            else
+            {
+                logger.LogDebug("Connection {ConnectionId} dropped for {Host}, other connections still active",
+                    Context.ConnectionId, host);
+            }
         }
 
         await base.OnDisconnectedAsync(exception);

@@ -32,7 +32,7 @@ public class ServersController(IServerService serverService) : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await serverService.DeleteServerAsync(id);
-        return NoContent();
+        var deleted = await serverService.DeleteServerAsync(id);
+        return deleted ? NoContent() : NotFound();
     }
 }

@@ -38,21 +38,21 @@ public class ServerRepository(AppDbContext context) : IServerRepository
         await context.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         var server = await context.Servers.FindAsync(id);
-        if (server is not null)
-        {
-            context.Servers.Remove(server);
-            await context.SaveChangesAsync();
-        }
+        if (server is null) return false;
+
+        context.Servers.Remove(server);
+        await context.SaveChangesAsync();
+        return true;
     }
 
     public async Task RemoveInactiveAsync(TimeSpan offlineThreshold)
     {
         var cutoff = DateTime.UtcNow - offlineThreshold;
         var inactive = await context.Servers
-            .Where(s => !s.IsOnline && s.LastSeenAt < cutoff)
+            .Where(s => s.LastSeenAt < cutoff)
             .ToListAsync();
 
         if (inactive.Count > 0)
