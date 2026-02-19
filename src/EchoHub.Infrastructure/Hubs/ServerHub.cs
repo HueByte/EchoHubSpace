@@ -40,10 +40,9 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-        var dto = new RegisterServerDto("", null, host, userCount);
-        var server = await serverService.RegisterServerAsync(dto);
-
-        await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
+        var server = await serverService.UpdateUserCountAsync(host, userCount);
+        if (server is not null)
+            await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
     }
 
     /// <summary>

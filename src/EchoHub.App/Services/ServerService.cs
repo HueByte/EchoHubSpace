@@ -65,6 +65,17 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return MapToDto(created);
     }
 
+    public async Task<ServerDto?> UpdateUserCountAsync(string host, int userCount)
+    {
+        var server = await serverRepository.GetByHostAsync(host);
+        if (server is null) return null;
+
+        server.UserCount = userCount;
+        server.LastSeenAt = DateTime.UtcNow;
+        await serverRepository.UpdateAsync(server);
+        return MapToDto(server);
+    }
+
     public async Task SetServerOfflineAsync(string host)
     {
         var server = await serverRepository.GetByHostAsync(host);

@@ -8,6 +8,7 @@ public interface IServerService
     Task<ServerDto?> GetServerByIdAsync(Guid id);
     Task<ServerDto> CreateServerAsync(CreateServerDto dto);
     Task<ServerDto> RegisterServerAsync(RegisterServerDto dto);
+    Task<ServerDto?> UpdateUserCountAsync(string host, int userCount);
     Task SetServerOfflineAsync(string host);
     Task DeleteServerAsync(Guid id);
 }
