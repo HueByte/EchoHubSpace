@@ -28,7 +28,7 @@ try
     builder.Services.AddSignalR();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseInMemoryDatabase("EchoHub"));
 
     builder.Services.AddScoped<IServerRepository, ServerRepository>();
     builder.Services.AddScoped<IServerService, ServerService>();
@@ -54,14 +54,6 @@ try
     app.UseCors("AllowClient");
     app.MapControllers();
     app.MapHub<EchoHub.Infrastructure.Hubs.ServerHub>("/hubs/servers");
-
-    var skipMigrations = Environment.GetEnvironmentVariable("SkipMigrations");
-    if (!string.Equals(skipMigrations, "true", StringComparison.OrdinalIgnoreCase))
-    {
-        using var scope = app.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
-    }
 
     await app.RunAsync();
 }
