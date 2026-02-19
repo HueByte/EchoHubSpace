@@ -53,6 +53,31 @@ export default function Servers() {
     connection.on("ServerUpdated", upsertServer);
     connection.on("ServerOffline", markOffline);
 
+    connection.onreconnected(async () => {
+      try {
+        await connection.invoke("JoinWebClients");
+        const fresh = await fetchServers();
+        setServers(fresh);
+      } catch {
+        /* best-effort refresh */
+      }
+    });
+
+    let retryTimeout: ReturnType<typeof setTimeout>;
+    connection.onclose(() => {
+      const retry = () => {
+        connection
+          .start()
+          .then(() => connection.invoke("JoinWebClients"))
+          .then(() => fetchServers())
+          .then(setServers)
+          .catch(() => {
+            retryTimeout = setTimeout(retry, 30_000);
+          });
+      };
+      retryTimeout = setTimeout(retry, 5_000);
+    });
+
     connection
       .start()
       .then(() => connection.invoke("JoinWebClients"))
@@ -61,6 +86,7 @@ export default function Servers() {
       });
 
     return () => {
+      clearTimeout(retryTimeout);
       connection.off("ServerUpdated");
       connection.off("ServerOffline");
       connection.stop();

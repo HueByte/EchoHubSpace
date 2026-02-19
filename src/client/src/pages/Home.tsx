@@ -1,17 +1,14 @@
 import { Link } from "react-router-dom";
 import { GoTerminal, GoCommentDiscussion, GoServer } from "react-icons/go";
 import { FiGithub } from "react-icons/fi";
+import EchoHubLogo from "../assets/EchoHubLogo";
 import styles from "./Home.module.css";
 
 export default function Home() {
   return (
     <div className={styles.container}>
       <div className={styles.hero}>
-        <img
-          src="https://cdn.voidcube.cloud/assets/hue_icon.svg"
-          alt="EchoHub logo"
-          className={styles.heroLogo}
-        />
+        <EchoHubLogo className={styles.heroLogo} />
         <h1 className={styles.title}>EchoHub</h1>
         <p className={styles.subtitle}>
           IRC-inspired chat, reimagined for the terminal.
