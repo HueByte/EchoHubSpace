@@ -6,7 +6,7 @@ public interface IServerRepository
 {
     Task<IEnumerable<Server>> GetAllAsync();
     Task<Server?> GetByIdAsync(Guid id);
-    Task<Server?> GetByHostAndPortAsync(string host, int port);
+    Task<Server?> GetByHostAsync(string host);
     Task<Server> AddAsync(Server server);
     Task UpdateAsync(Server server);
     Task DeleteAsync(Guid id);

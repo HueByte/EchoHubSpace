@@ -5,7 +5,6 @@ export interface Server {
   name: string;
   description: string | null;
   host: string;
-  port: number;
   userCount: number;
   isOnline: boolean;
   createdAt: string;

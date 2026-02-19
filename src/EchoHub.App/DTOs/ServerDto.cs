@@ -5,7 +5,6 @@ public record ServerDto(
     string Name,
     string? Description,
     string Host,
-    int Port,
     int UserCount,
     bool IsOnline,
     DateTime CreatedAt
@@ -14,14 +13,12 @@ public record ServerDto(
 public record CreateServerDto(
     string Name,
     string? Description,
-    string Host,
-    int Port
+    string Host
 );
 
 public record RegisterServerDto(
     string Name,
     string? Description,
     string Host,
-    int Port,
     int UserCount
 );

@@ -16,9 +16,7 @@ export default function Servers() {
 
   const upsertServer = useCallback((updated: Server) => {
     setServers((prev) => {
-      const idx = prev.findIndex(
-        (s) => s.host === updated.host && s.port === updated.port,
-      );
+      const idx = prev.findIndex((s) => s.host === updated.host);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = updated;
@@ -29,10 +27,10 @@ export default function Servers() {
   }, []);
 
   const markOffline = useCallback(
-    (info: { host: string; port: number }) => {
+    (info: { host: string }) => {
       setServers((prev) =>
         prev.map((s) =>
-          s.host === info.host && s.port === info.port
+          s.host === info.host
             ? { ...s, isOnline: false, userCount: 0 }
             : s,
         ),
@@ -137,7 +135,7 @@ export default function Servers() {
             )}
             <div className={styles.cardFooter}>
               <span className={styles.host}>
-                {server.host}:{server.port}
+                {server.host}
               </span>
             </div>
           </div>

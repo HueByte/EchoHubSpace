@@ -19,10 +19,10 @@ public class ServerRepository(AppDbContext context) : IServerRepository
         return await context.Servers.FindAsync(id);
     }
 
-    public async Task<Server?> GetByHostAndPortAsync(string host, int port)
+    public async Task<Server?> GetByHostAsync(string host)
     {
         return await context.Servers
-            .FirstOrDefaultAsync(s => s.Host == host && s.Port == port);
+            .FirstOrDefaultAsync(s => s.Host == host);
     }
 
     public async Task<Server> AddAsync(Server server)

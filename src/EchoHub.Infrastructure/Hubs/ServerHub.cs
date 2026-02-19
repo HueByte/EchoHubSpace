@@ -8,8 +8,8 @@ namespace EchoHub.Infrastructure.Hubs;
 
 public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> logger) : Hub
 {
-    // Maps connectionId -> (host, port) so we can mark servers offline on disconnect
-    private static readonly ConcurrentDictionary<string, (string Host, int Port)> ConnectedServers = new();
+    // Maps connectionId -> host so we can mark servers offline on disconnect
+    private static readonly ConcurrentDictionary<string, string> ConnectedServers = new();
 
     /// <summary>
     /// Called by an EchoHub server to register/update itself on the server list.
@@ -21,10 +21,10 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
         var server = await serverService.RegisterServerAsync(dto);
 
-        ConnectedServers[Context.ConnectionId] = (dto.Host, dto.Port);
+        ConnectedServers[Context.ConnectionId] = dto.Host;
 
-        logger.LogInformation("Server registered: {Name} at {Host}:{Port} (connection {ConnectionId})",
-            dto.Name, dto.Host, dto.Port, Context.ConnectionId);
+        logger.LogInformation("Server registered: {Name} at {Host} (connection {ConnectionId})",
+            dto.Name, dto.Host, Context.ConnectionId);
 
         await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
     }
@@ -34,13 +34,13 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     /// </summary>
     public async Task UpdateUserCount(int userCount)
     {
-        if (!ConnectedServers.TryGetValue(Context.ConnectionId, out var info))
+        if (!ConnectedServers.TryGetValue(Context.ConnectionId, out var host))
             return;
 
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-        var dto = new RegisterServerDto("", null, info.Host, info.Port, userCount);
+        var dto = new RegisterServerDto("", null, host, userCount);
         var server = await serverService.RegisterServerAsync(dto);
 
         await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
@@ -56,17 +56,17 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (ConnectedServers.TryRemove(Context.ConnectionId, out var info))
+        if (ConnectedServers.TryRemove(Context.ConnectionId, out var host))
         {
-            logger.LogInformation("Server disconnected: {Host}:{Port} (connection {ConnectionId})",
-                info.Host, info.Port, Context.ConnectionId);
+            logger.LogInformation("Server disconnected: {Host} (connection {ConnectionId})",
+                host, Context.ConnectionId);
 
             using var scope = scopeFactory.CreateScope();
             var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-            await serverService.SetServerOfflineAsync(info.Host, info.Port);
+            await serverService.SetServerOfflineAsync(host);
 
-            await Clients.Group("web-clients").SendAsync("ServerOffline", new { info.Host, info.Port });
+            await Clients.Group("web-clients").SendAsync("ServerOffline", new { Host = host });
         }
 
         await base.OnDisconnectedAsync(exception);

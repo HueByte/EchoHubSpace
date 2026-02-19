@@ -27,7 +27,6 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             Name = dto.Name,
             Description = dto.Description,
             Host = dto.Host,
-            Port = dto.Port,
             IsOnline = false,
             UserCount = 0,
         };
@@ -38,7 +37,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
 
     public async Task<ServerDto> RegisterServerAsync(RegisterServerDto dto)
     {
-        var existing = await serverRepository.GetByHostAndPortAsync(dto.Host, dto.Port);
+        var existing = await serverRepository.GetByHostAsync(dto.Host);
 
         if (existing is not null)
         {
@@ -56,7 +55,6 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             Name = dto.Name,
             Description = dto.Description,
             Host = dto.Host,
-            Port = dto.Port,
             UserCount = dto.UserCount,
             IsOnline = true,
         };
@@ -65,9 +63,9 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return MapToDto(created);
     }
 
-    public async Task SetServerOfflineAsync(string host, int port)
+    public async Task SetServerOfflineAsync(string host)
     {
-        var server = await serverRepository.GetByHostAndPortAsync(host, port);
+        var server = await serverRepository.GetByHostAsync(host);
         if (server is not null)
         {
             server.IsOnline = false;
@@ -87,7 +85,6 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             server.Name,
             server.Description,
             server.Host,
-            server.Port,
             server.UserCount,
             server.IsOnline,
             server.CreatedAt
