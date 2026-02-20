@@ -33,13 +33,17 @@ try
         options.UseInMemoryDatabase("EchoHub"));
 
     builder.Services.AddMemoryCache();
-    builder.Services.AddHttpClient<IAppService, AppService>((sp, client) =>
+    var ghToken = builder.Configuration["GitHub:Token"];
+    var maskedToken = string.IsNullOrEmpty(ghToken) ? "(not set)" : $"{ghToken[..4]}***";
+    Log.Information("GitHub token: {MaskedToken}", maskedToken);
+
+    builder.Services.AddHttpClient<IAppService, AppService>((_, client) =>
     {
+        client.Timeout = TimeSpan.FromSeconds(10);
         client.DefaultRequestHeaders.UserAgent.ParseAdd("EchoHub-Web");
 
-        var token = sp.GetRequiredService<IConfiguration>()["GitHub:Token"];
-        if (!string.IsNullOrEmpty(token))
-            client.DefaultRequestHeaders.Authorization = new("Bearer", token);
+        if (!string.IsNullOrEmpty(ghToken))
+            client.DefaultRequestHeaders.Authorization = new("Bearer", ghToken);
     });
 
     builder.Services.AddScoped<IServerRepository, ServerRepository>();

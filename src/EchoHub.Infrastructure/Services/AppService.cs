@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Xml.Linq;
 using EchoHub.Core.DTOs;
 using EchoHub.Core.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
@@ -34,8 +33,7 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
             if (release is null) return null;
 
             var tagName = release.Value.GetProperty("tag_name").GetString()!;
-            var version = await GetVersionFromBuildPropsAsync(tagName)
-                          ?? tagName.TrimStart('v');
+            var version = tagName.TrimStart('v');
             var changelog = $"https://huebyte.github.io/EchoHub/changelog/{tagName}.html";
 
             var items = new List<UpdateItemDto>();
@@ -97,17 +95,5 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
 
         var json = await response.Content.ReadAsStringAsync();
         return JsonDocument.Parse(json).RootElement;
-    }
-
-    private async Task<string?> GetVersionFromBuildPropsAsync(string tagName)
-    {
-        var response = await httpClient.GetAsync(
-            $"https://raw.githubusercontent.com/{GitHubOwner}/{GitHubRepo}/{tagName}/src/Directory.Build.props");
-
-        if (!response.IsSuccessStatusCode) return null;
-
-        var xml = await response.Content.ReadAsStringAsync();
-        var doc = XDocument.Parse(xml);
-        return doc.Descendants("Version").FirstOrDefault()?.Value;
     }
 }
