@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { GoHome, GoServer } from "react-icons/go";
+import { GoHome, GoServer, GoBook, GoLog } from "react-icons/go";
 import styles from "./Navbar.module.css";
 
 export default function Navbar() {
@@ -30,6 +30,24 @@ export default function Navbar() {
           <GoServer size={16} />
           <span>Servers</span>
         </Link>
+        <a
+          href="https://huebyte.github.io/EchoHub/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.link}
+        >
+          <GoBook size={16} />
+          <span>Documentation</span>
+        </a>
+        <a
+          href="https://huebyte.github.io/EchoHub/changelog/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.link}
+        >
+          <GoLog size={16} />
+          <span>Changelog</span>
+        </a>
       </div>
     </nav>
   );

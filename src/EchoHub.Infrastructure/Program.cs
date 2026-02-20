@@ -30,6 +30,12 @@ try
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseInMemoryDatabase("EchoHub"));
 
+    builder.Services.AddMemoryCache();
+    builder.Services.AddHttpClient<IAppService, AppService>(client =>
+    {
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("EchoHub-Web");
+    });
+
     builder.Services.AddScoped<IServerRepository, ServerRepository>();
     builder.Services.AddScoped<IServerService, ServerService>();
     builder.Services.AddHostedService<EchoHub.Infrastructure.Services.InactiveServerCleanupService>();

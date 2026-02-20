@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { GoHome, GoServer } from "react-icons/go";
+import { GoHome, GoServer, GoBook, GoLog } from "react-icons/go";
 import { HiOutlineBars3, HiOutlineXMark } from "react-icons/hi2";
 import styles from "./SideMenu.module.css";
 
@@ -62,6 +62,26 @@ export default function SideMenu() {
             <GoServer size={18} />
             <span>Servers</span>
           </Link>
+          <a
+            href="https://huebyte.github.io/EchoHub/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.link}
+            onClick={close}
+          >
+            <GoBook size={18} />
+            <span>Documentation</span>
+          </a>
+          <a
+            href="https://huebyte.github.io/EchoHub/changelog/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.link}
+            onClick={close}
+          >
+            <GoLog size={18} />
+            <span>Changelog</span>
+          </a>
         </div>
       </nav>
     </>

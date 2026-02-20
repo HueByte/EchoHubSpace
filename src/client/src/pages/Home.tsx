@@ -11,10 +11,11 @@ export default function Home() {
         <EchoHubLogo className={styles.heroLogo} />
         <h1 className={styles.title}>EchoHub</h1>
         <p className={styles.subtitle}>
-          IRC-inspired chat, reimagined for the terminal.
+          No tracking. No subscriptions. No 'enhanced AI features'. Just chat.
         </p>
         <p className={styles.description}>
-          Connect to servers, join channels, and chat — all from your CLI.
+          Connect to servers, join channels, and chat — from TUI or your
+          favorite IRC client.
         </p>
         <div className={styles.actions}>
           <Link to="/servers" className={styles.primaryBtn}>
@@ -39,16 +40,17 @@ export default function Home() {
           </div>
           <h3 className={styles.featureTitle}>Terminal Native</h3>
           <p className={styles.featureDesc}>
-            Built for the command line. No browser needed.
+            Built for the command line. No browser, no Electron — just your
+            terminal.
           </p>
         </div>
         <div className={styles.feature}>
           <div className={styles.featureIcon}>
             <GoCommentDiscussion size={20} />
           </div>
-          <h3 className={styles.featureTitle}>IRC Protocol</h3>
+          <h3 className={styles.featureTitle}>Native IRC Support</h3>
           <p className={styles.featureDesc}>
-            Familiar IRC concepts — servers, channels, direct messages.
+            Connect with irssi, WeeChat, or any IRC client alongside TUI users.
           </p>
         </div>
         <div className={styles.feature}>
@@ -57,7 +59,8 @@ export default function Home() {
           </div>
           <h3 className={styles.featureTitle}>Self-Hosted</h3>
           <p className={styles.featureDesc}>
-            Run your own server. Own your conversations.
+            Run your own server with E2E encryption. No tracking, no third
+            parties — own your conversations.
           </p>
         </div>
       </div>
