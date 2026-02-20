@@ -6,6 +6,10 @@ using Microsoft.Extensions.Logging;
 
 namespace EchoHub.Infrastructure.Services;
 
+/// <summary>
+/// Retrieves application update information by querying the GitHub Releases API
+/// and caching the result as an <see cref="UpdateManifestDto"/>.
+/// </summary>
 public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppService> logger) : IAppService
 {
     private const string CacheKey = "latest_version_info";
@@ -22,6 +26,7 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
         ["EchoHub-Client-osx-arm64.zip"] = "osx-arm64",
     };
 
+    /// <inheritdoc />
     public async Task<UpdateManifestDto?> GetLatestVersionAsync()
     {
         if (cache.TryGetValue(CacheKey, out UpdateManifestDto? cached))
@@ -29,16 +34,19 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
 
         try
         {
-            var release = await GetLatestReleaseAsync();
-            if (release is null) return null;
+            var json = await GetLatestReleaseJsonAsync();
+            if (json is null) return null;
 
-            var tagName = release.Value.GetProperty("tag_name").GetString()!;
+            using var doc = JsonDocument.Parse(json);
+            var release = doc.RootElement;
+
+            var tagName = release.GetProperty("tag_name").GetString()!;
             var version = tagName.TrimStart('v');
             var changelog = $"https://huebyte.github.io/EchoHub/changelog/{tagName}.html";
 
             var items = new List<UpdateItemDto>();
 
-            foreach (var asset in release.Value.GetProperty("assets").EnumerateArray())
+            foreach (var asset in release.GetProperty("assets").EnumerateArray())
             {
                 var name = asset.GetProperty("name").GetString()!;
                 if (!AssetOsMap.TryGetValue(name, out var os)) continue;
@@ -86,12 +94,16 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
         }
     }
 
-    private async Task<JsonElement?> GetLatestReleaseAsync()
+    /// <summary>
+    /// Fetches the latest release JSON string from the GitHub API.
+    /// </summary>
+    /// <returns>The raw JSON response body, or <c>null</c> if the request failed.</returns>
+    private async Task<string?> GetLatestReleaseJsonAsync()
     {
         var url = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases/latest";
         logger.LogInformation("Fetching latest release from {Url}", url);
 
-        var response = await httpClient.GetAsync(url);
+        using var response = await httpClient.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -101,7 +113,6 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
         }
 
         logger.LogInformation("GitHub API responded {StatusCode}", (int)response.StatusCode);
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonDocument.Parse(json).RootElement;
+        return await response.Content.ReadAsStringAsync();
     }
 }

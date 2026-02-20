@@ -137,6 +137,18 @@
 }
 
 @media (max-width: 768px) {
+  .burger {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(8px);
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .burger:hover {
+    border-color: var(--border-hover);
+  }
+
   .panel {
     width: 100%;
     border-right: none;

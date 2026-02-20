@@ -4,20 +4,26 @@ using EchoHub.Core.Interfaces;
 
 namespace EchoHub.Core.Services;
 
+/// <summary>
+/// Default implementation of <see cref="IServerService"/> that manages server lifecycle operations.
+/// </summary>
 public class ServerService(IServerRepository serverRepository) : IServerService
 {
+    /// <inheritdoc />
     public async Task<IEnumerable<ServerDto>> GetAllServersAsync()
     {
         var servers = await serverRepository.GetAllAsync();
         return servers.Select(MapToDto);
     }
 
+    /// <inheritdoc />
     public async Task<ServerDto?> GetServerByIdAsync(Guid id)
     {
         var server = await serverRepository.GetByIdAsync(id);
         return server is null ? null : MapToDto(server);
     }
 
+    /// <inheritdoc />
     public async Task<ServerDto> CreateServerAsync(CreateServerDto dto)
     {
         var server = new Server
@@ -34,6 +40,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return MapToDto(created);
     }
 
+    /// <inheritdoc />
     public async Task<ServerDto> RegisterServerAsync(RegisterServerDto dto)
     {
         var existing = await serverRepository.GetByHostAsync(dto.Host);
@@ -64,6 +71,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return MapToDto(created);
     }
 
+    /// <inheritdoc />
     public async Task<ServerDto?> UpdateUserCountAsync(string host, int userCount)
     {
         var server = await serverRepository.GetByHostAsync(host);
@@ -75,6 +83,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return MapToDto(server);
     }
 
+    /// <inheritdoc />
     public async Task RefreshLastSeenAsync(string host)
     {
         var server = await serverRepository.GetByHostAsync(host);
@@ -84,6 +93,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         await serverRepository.UpdateAsync(server);
     }
 
+    /// <inheritdoc />
     public async Task SetServerOfflineAsync(string host)
     {
         var server = await serverRepository.GetByHostAsync(host);
@@ -95,6 +105,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         }
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeleteServerAsync(Guid id)
     {
         return await serverRepository.DeleteAsync(id);

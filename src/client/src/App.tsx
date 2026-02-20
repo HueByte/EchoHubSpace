@@ -1,17 +1,18 @@
+import { lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import StarField from "./components/StarField";
-import SideMenu from "./components/SideMenu";
-import Home from "./pages/Home";
-import Servers from "./pages/Servers";
+import DefaultLayout from "./layouts/DefaultLayout";
+
+const Home = lazy(() => import("./pages/Home"));
+const Servers = lazy(() => import("./pages/Servers"));
 
 export default function App() {
   return (
     <BrowserRouter>
-      <StarField />
-      <SideMenu />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/servers" element={<Servers />} />
+        <Route element={<DefaultLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/servers" element={<Servers />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

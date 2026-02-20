@@ -34,7 +34,7 @@ try
 
     builder.Services.AddMemoryCache();
     var ghToken = builder.Configuration["GitHub:Token"];
-    var maskedToken = string.IsNullOrEmpty(ghToken) ? "(not set)" : $"{ghToken[..4]}***";
+    var maskedToken = string.IsNullOrEmpty(ghToken) ? "(not set)" : $"{ghToken[..Math.Min(4, ghToken.Length)]}***";
     Log.Information("GitHub token: {MaskedToken}", maskedToken);
 
     builder.Services.AddHttpClient<IAppService, AppService>((_, client) =>

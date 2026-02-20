@@ -6,6 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace EchoHub.App.Services;
 
+/// <summary>
+/// Background service that periodically checks for stale or unresponsive servers.
+/// Sends alive-check pings to stale servers, marks unresponsive ones as offline,
+/// and removes offline servers that have exceeded the cleanup threshold.
+/// </summary>
 public class InactiveServerCleanupService(
     IServiceScopeFactory scopeFactory,
     IHubContext<ServerHub> hubContext,
@@ -22,6 +27,7 @@ public class InactiveServerCleanupService(
     // Offline servers get removed from DB after 5 min
     private static readonly TimeSpan OfflineCleanupThreshold = TimeSpan.FromMinutes(5);
 
+    /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)

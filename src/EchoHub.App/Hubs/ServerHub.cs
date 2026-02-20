@@ -6,6 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace EchoHub.App.Hubs;
 
+/// <summary>
+/// SignalR hub that manages real-time communication between EchoHub server instances and web clients.
+/// Server instances register, send heartbeats, and update user counts through this hub.
+/// Web clients join a broadcast group to receive live server status updates.
+/// </summary>
 public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> logger) : Hub
 {
     // Maps connectionId -> host for reverse lookup on disconnect
@@ -29,9 +34,17 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
         var server = await serverService.RegisterServerAsync(dto);
 
-        ConnectionToHost[Context.ConnectionId] = dto.Host;
         lock (Lock)
         {
+            // If this connection was previously mapped to a different host, decrement the old host's count
+            if (ConnectionToHost.TryGetValue(Context.ConnectionId, out var previousHost) && previousHost != dto.Host)
+            {
+                var remaining = HostConnectionCount.AddOrUpdate(previousHost, 0, (_, count) => count - 1);
+                if (remaining <= 0)
+                    HostConnectionCount.TryRemove(previousHost, out _);
+            }
+
+            ConnectionToHost[Context.ConnectionId] = dto.Host;
             HostConnectionCount.AddOrUpdate(dto.Host, 1, (_, count) => count + 1);
         }
 
@@ -77,6 +90,7 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     /// Returns all tracked connection IDs for a given host.
     /// Used by the cleanup service to send alive checks.
     /// </summary>
+    /// <param name="host">The host address to look up connections for.</param>
     public static IEnumerable<string> GetConnectionIdsForHost(string host)
     {
         return ConnectionToHost
@@ -92,6 +106,10 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
         await Groups.AddToGroupAsync(Context.ConnectionId, "web-clients");
     }
 
+    /// <summary>
+    /// Handles client disconnection by decrementing the connection count for the associated host.
+    /// When all connections for a host are dropped, the server is marked offline and web clients are notified.
+    /// </summary>
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (ConnectionToHost.TryRemove(Context.ConnectionId, out var host))

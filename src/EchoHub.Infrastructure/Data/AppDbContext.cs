@@ -3,10 +3,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EchoHub.Infrastructure.Data;
 
+/// <summary>
+/// Entity Framework Core database context for the EchoHub application.
+/// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// Gets the set of registered servers.
+    /// </summary>
     public DbSet<Server> Servers => Set<Server>();
 
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Server>(entity =>
