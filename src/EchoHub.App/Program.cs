@@ -33,9 +33,13 @@ try
         options.UseInMemoryDatabase("EchoHub"));
 
     builder.Services.AddMemoryCache();
-    builder.Services.AddHttpClient<IAppService, AppService>(client =>
+    builder.Services.AddHttpClient<IAppService, AppService>((sp, client) =>
     {
         client.DefaultRequestHeaders.UserAgent.ParseAdd("EchoHub-Web");
+
+        var token = sp.GetRequiredService<IConfiguration>()["GitHub:Token"];
+        if (!string.IsNullOrEmpty(token))
+            client.DefaultRequestHeaders.Authorization = new("Bearer", token);
     });
 
     builder.Services.AddScoped<IServerRepository, ServerRepository>();

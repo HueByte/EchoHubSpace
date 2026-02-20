@@ -5,6 +5,7 @@ services:
       dockerfile: EchoHub.App/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      GitHub__Token: ${GITHUB_TOKEN:-}
     ports:
       - "8080:8080"
 

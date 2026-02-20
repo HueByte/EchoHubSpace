@@ -45,7 +45,9 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
                 var name = asset.GetProperty("name").GetString()!;
                 if (!AssetOsMap.TryGetValue(name, out var os)) continue;
 
-                var digest = asset.GetProperty("digest").GetString() ?? string.Empty;
+                var digest = asset.TryGetProperty("digest", out var digestProp)
+                    ? digestProp.GetString() ?? string.Empty
+                    : string.Empty;
                 ParseDigest(digest, out var algorithm, out var hash);
 
                 items.Add(new UpdateItemDto
