@@ -63,7 +63,7 @@ graph LR
 ### Run the API
 
 ```bash
-dotnet run --project src/EchoHub.Infrastructure
+dotnet run --project src/EchoHub.App
 ```
 
 ### Run the client
@@ -133,17 +133,17 @@ src/
 │   ├── Entities/
 │   └── Interfaces/
 │
-├── EchoHub.App/                   # Application services & DTOs
-│   ├── DTOs/
-│   ├── Interfaces/
-│   └── Services/
-│
-├── EchoHub.Infrastructure/        # API, hubs, data access
+├── EchoHub.App/                   # API, services, hubs & DTOs
 │   ├── Controllers/
 │   ├── Hubs/                      # SignalR server hub
-│   ├── Data/
-│   ├── Repositories/
+│   ├── DTOs/
+│   ├── Interfaces/
+│   ├── Services/
 │   └── Dockerfile
+│
+├── EchoHub.Infrastructure/        # Data access
+│   ├── Data/
+│   └── Repositories/
 │
 └── EchoHub.Web.slnx               # Solution file
 ```

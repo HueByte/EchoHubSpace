@@ -1,6 +1,6 @@
 using System.Xml.Serialization;
 
-namespace EchoHub.App.DTOs;
+namespace EchoHub.Core.DTOs;
 
 [XmlRoot("updates")]
 public class UpdateManifestDto

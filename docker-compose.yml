@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: ./src
-      dockerfile: EchoHub.Infrastructure/Dockerfile
+      dockerfile: EchoHub.App/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
     ports:

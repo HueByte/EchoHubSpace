@@ -1,8 +1,10 @@
-using EchoHub.App.Interfaces;
+using EchoHub.App.Hubs;
 using EchoHub.App.Services;
 using EchoHub.Core.Interfaces;
+using EchoHub.Core.Services;
 using EchoHub.Infrastructure.Data;
 using EchoHub.Infrastructure.Repositories;
+using EchoHub.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -38,7 +40,7 @@ try
 
     builder.Services.AddScoped<IServerRepository, ServerRepository>();
     builder.Services.AddScoped<IServerService, ServerService>();
-    builder.Services.AddHostedService<EchoHub.Infrastructure.Services.InactiveServerCleanupService>();
+    builder.Services.AddHostedService<InactiveServerCleanupService>();
 
     builder.Services.AddCors(options =>
     {
@@ -60,7 +62,7 @@ try
     app.UseSerilogRequestLogging();
     app.UseCors("AllowClient");
     app.MapControllers();
-    app.MapHub<EchoHub.Infrastructure.Hubs.ServerHub>("/hubs/servers");
+    app.MapHub<ServerHub>("/hubs/servers");
 
     await app.RunAsync();
 }

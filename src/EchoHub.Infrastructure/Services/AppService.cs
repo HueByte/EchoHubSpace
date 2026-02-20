@@ -1,11 +1,11 @@
 using System.Text.Json;
 using System.Xml.Linq;
-using EchoHub.App.DTOs;
-using EchoHub.App.Interfaces;
+using EchoHub.Core.DTOs;
+using EchoHub.Core.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace EchoHub.App.Services;
+namespace EchoHub.Infrastructure.Services;
 
 public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppService> logger) : IAppService
 {

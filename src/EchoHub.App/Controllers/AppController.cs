@@ -1,9 +1,9 @@
 using System.Xml.Serialization;
-using EchoHub.App.DTOs;
-using EchoHub.App.Interfaces;
+using EchoHub.Core.DTOs;
+using EchoHub.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EchoHub.Infrastructure.Controllers;
+namespace EchoHub.App.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

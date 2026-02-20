@@ -1,6 +1,6 @@
-using EchoHub.App.DTOs;
+using EchoHub.Core.DTOs;
 
-namespace EchoHub.App.Interfaces;
+namespace EchoHub.Core.Interfaces;
 
 public interface IAppService
 {
