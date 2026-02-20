@@ -15,7 +15,8 @@ public class AppController(IAppService appService) : ControllerBase
     public async Task<IActionResult> GetVersion([FromQuery] string? format)
     {
         var manifest = await appService.GetLatestVersionAsync();
-        if (manifest is null) return StatusCode(502);
+        if (manifest is null)
+            return StatusCode(500, "Failed to fetch version info");
 
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
             return Ok(manifest);

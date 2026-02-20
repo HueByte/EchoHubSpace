@@ -69,6 +69,7 @@ try
 
     app.UseSerilogRequestLogging();
     app.UseCors("AllowClient");
+    app.MapGet("/api", () => "OK");
     app.MapControllers();
     app.MapHub<ServerHub>("/hubs/servers");
 

@@ -88,11 +88,19 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
 
     private async Task<JsonElement?> GetLatestReleaseAsync()
     {
-        var response = await httpClient.GetAsync(
-            $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases/latest");
+        var url = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases/latest";
+        logger.LogInformation("Fetching latest release from {Url}", url);
 
-        if (!response.IsSuccessStatusCode) return null;
+        var response = await httpClient.GetAsync(url);
 
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            logger.LogError("GitHub API returned {StatusCode}: {Body}", (int)response.StatusCode, body);
+            return null;
+        }
+
+        logger.LogInformation("GitHub API responded {StatusCode}", (int)response.StatusCode);
         var json = await response.Content.ReadAsStringAsync();
         return JsonDocument.Parse(json).RootElement;
     }
