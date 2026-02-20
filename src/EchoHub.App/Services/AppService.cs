@@ -15,9 +15,17 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
     private const string GitHubOwner = "HueByte";
     private const string GitHubRepo = "EchoHub";
 
-    public async Task<VersionInfoDto?> GetLatestVersionAsync()
+    private static readonly Dictionary<string, string> AssetOsMap = new()
     {
-        if (cache.TryGetValue(CacheKey, out VersionInfoDto? cached))
+        ["EchoHub-Client-win-x64.zip"] = "windows",
+        ["EchoHub-Client-linux-x64.zip"] = "linux",
+        ["EchoHub-Client-osx-x64.zip"] = "osx-x64",
+        ["EchoHub-Client-osx-arm64.zip"] = "osx-arm64",
+    };
+
+    public async Task<UpdateManifestDto?> GetLatestVersionAsync()
+    {
+        if (cache.TryGetValue(CacheKey, out UpdateManifestDto? cached))
             return cached;
 
         try
@@ -26,15 +34,32 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
             if (release is null) return null;
 
             var tagName = release.Value.GetProperty("tag_name").GetString()!;
-            var version = await GetVersionFromBuildPropsAsync(tagName);
+            var version = await GetVersionFromBuildPropsAsync(tagName)
+                          ?? tagName.TrimStart('v');
+            var changelog = $"https://huebyte.github.io/EchoHub/changelog/{tagName}.html";
 
-            var result = new VersionInfoDto
+            var items = new List<UpdateItemDto>();
+
+            foreach (var asset in release.Value.GetProperty("assets").EnumerateArray())
             {
-                Version = version ?? tagName.TrimStart('v'),
-                Url = $"https://github.com/{GitHubOwner}/{GitHubRepo}",
-                Changelog = $"https://huebyte.github.io/EchoHub/changelog/{tagName}.html",
-                Mandatory = false,
-            };
+                var name = asset.GetProperty("name").GetString()!;
+                if (!AssetOsMap.TryGetValue(name, out var os)) continue;
+
+                var digest = asset.GetProperty("digest").GetString() ?? string.Empty;
+                ParseDigest(digest, out var algorithm, out var hash);
+
+                items.Add(new UpdateItemDto
+                {
+                    Os = os,
+                    Version = version,
+                    Url = asset.GetProperty("browser_download_url").GetString()!,
+                    Changelog = changelog,
+                    Mandatory = false,
+                    Checksum = new ChecksumDto { Algorithm = algorithm, Value = hash },
+                });
+            }
+
+            var result = new UpdateManifestDto { Items = items };
 
             cache.Set(CacheKey, result, CacheDuration);
             return result;
@@ -43,6 +68,21 @@ public class AppService(HttpClient httpClient, IMemoryCache cache, ILogger<AppSe
         {
             logger.LogError(ex, "Failed to fetch latest version info from GitHub");
             return null;
+        }
+    }
+
+    private static void ParseDigest(string digest, out string algorithm, out string hash)
+    {
+        var parts = digest.Split(':', 2);
+        if (parts.Length == 2)
+        {
+            algorithm = parts[0].ToUpperInvariant();
+            hash = parts[1];
+        }
+        else
+        {
+            algorithm = string.Empty;
+            hash = digest;
         }
     }
 

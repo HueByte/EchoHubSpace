@@ -2,9 +2,18 @@ using System.Xml.Serialization;
 
 namespace EchoHub.App.DTOs;
 
-[XmlRoot("item")]
-public class VersionInfoDto
+[XmlRoot("updates")]
+public class UpdateManifestDto
 {
+    [XmlElement("item")]
+    public List<UpdateItemDto> Items { get; set; } = [];
+}
+
+public class UpdateItemDto
+{
+    [XmlElement("os")]
+    public string Os { get; set; } = string.Empty;
+
     [XmlElement("version")]
     public string Version { get; set; } = string.Empty;
 
@@ -16,4 +25,16 @@ public class VersionInfoDto
 
     [XmlElement("mandatory")]
     public bool Mandatory { get; set; }
+
+    [XmlElement("checksum")]
+    public ChecksumDto Checksum { get; set; } = new();
+}
+
+public class ChecksumDto
+{
+    [XmlAttribute("algorithm")]
+    public string Algorithm { get; set; } = string.Empty;
+
+    [XmlText]
+    public string Value { get; set; } = string.Empty;
 }

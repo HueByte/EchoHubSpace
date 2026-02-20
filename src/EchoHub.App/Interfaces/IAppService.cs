@@ -4,5 +4,5 @@ namespace EchoHub.App.Interfaces;
 
 public interface IAppService
 {
-    Task<VersionInfoDto?> GetLatestVersionAsync();
+    Task<UpdateManifestDto?> GetLatestVersionAsync();
 }

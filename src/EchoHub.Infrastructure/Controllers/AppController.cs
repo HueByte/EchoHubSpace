@@ -9,19 +9,19 @@ namespace EchoHub.Infrastructure.Controllers;
 [Route("api/[controller]")]
 public class AppController(IAppService appService) : ControllerBase
 {
-    private static readonly XmlSerializer XmlSerializer = new(typeof(VersionInfoDto));
+    private static readonly XmlSerializer XmlSerializer = new(typeof(UpdateManifestDto));
 
     [HttpGet("version")]
     public async Task<IActionResult> GetVersion([FromQuery] string? format)
     {
-        var versionInfo = await appService.GetLatestVersionAsync();
-        if (versionInfo is null) return StatusCode(502);
+        var manifest = await appService.GetLatestVersionAsync();
+        if (manifest is null) return StatusCode(502);
 
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-            return Ok(versionInfo);
+            return Ok(manifest);
 
         using var writer = new StringWriter();
-        XmlSerializer.Serialize(writer, versionInfo);
+        XmlSerializer.Serialize(writer, manifest);
         return Content(writer.ToString(), "application/xml");
     }
 }
