@@ -15,7 +15,8 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "";
 export async function fetchServers(): Promise<Server[]> {
   const res = await fetch(`${API_BASE}/api/servers`);
   if (!res.ok) throw new Error("Failed to fetch servers");
-  return res.json();
+  const body = await res.json();
+  return body.data;
 }
 
 export function createServerHubConnection(): signalR.HubConnection {

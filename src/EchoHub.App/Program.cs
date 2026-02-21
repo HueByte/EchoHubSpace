@@ -1,3 +1,4 @@
+using EchoHub.App.Handlers;
 using EchoHub.App.Hubs;
 using EchoHub.App.Services;
 using EchoHub.Core.Interfaces;
@@ -28,6 +29,8 @@ try
     builder.Services.AddOpenApi();
     builder.Services.AddSwaggerGen();
     builder.Services.AddSignalR();
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseInMemoryDatabase("EchoHub"));
@@ -60,13 +63,19 @@ try
 
     var app = builder.Build();
 
+    app.UseExceptionHandler();
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
         app.UseSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(options =>
+        {
+            options.InjectStylesheet("/swagger-ui/dark-theme.css");
+        });
     }
 
+    app.UseStaticFiles();
     app.UseSerilogRequestLogging();
     app.UseCors("AllowClient");
     app.MapGet("/api", () => "OK");
