@@ -24,23 +24,6 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     }
 
     /// <inheritdoc />
-    public async Task<ServerDto> CreateServerAsync(CreateServerDto dto)
-    {
-        var server = new Server
-        {
-            Id = Guid.NewGuid(),
-            Name = dto.Name,
-            Description = dto.Description,
-            Host = dto.Host,
-            IsOnline = false,
-            UserCount = 0,
-        };
-
-        var created = await serverRepository.AddAsync(server);
-        return MapToDto(created);
-    }
-
-    /// <inheritdoc />
     public async Task<ServerDto> RegisterServerAsync(RegisterServerDto dto)
     {
         var existing = await serverRepository.GetByHostAsync(dto.Host);

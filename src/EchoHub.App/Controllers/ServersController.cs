@@ -1,3 +1,4 @@
+using EchoHub.App.Filters;
 using EchoHub.Core.DTOs;
 using EchoHub.Core.Interfaces;
 using EchoHub.Core.Models;
@@ -41,23 +42,13 @@ public class ServersController(IServerService serverService) : ControllerBase
     }
 
     /// <summary>
-    /// Creates a new server entry.
-    /// </summary>
-    /// <param name="dto">The server creation data.</param>
-    [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<ServerDto>), StatusCodes.Status201Created)]
-    public async Task<ActionResult<ApiResponse<ServerDto>>> Create(CreateServerDto dto)
-    {
-        var server = await serverService.CreateServerAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = server.Id }, ApiResponse.Ok(server));
-    }
-
-    /// <summary>
-    /// Deletes a server by its unique identifier.
+    /// Deletes a server by its unique identifier. Requires API key authorization.
     /// </summary>
     /// <param name="id">The server ID.</param>
     [HttpDelete("{id:guid}")]
+    [ApiKeyAuth]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse>> Delete(Guid id)
     {

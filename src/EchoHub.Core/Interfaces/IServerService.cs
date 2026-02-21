@@ -19,12 +19,6 @@ public interface IServerService
     Task<ServerDto?> GetServerByIdAsync(Guid id);
 
     /// <summary>
-    /// Creates a new server entry (initially offline).
-    /// </summary>
-    /// <param name="dto">The server creation data.</param>
-    Task<ServerDto> CreateServerAsync(CreateServerDto dto);
-
-    /// <summary>
     /// Registers or updates a server via SignalR, marking it as online.
     /// </summary>
     /// <param name="dto">The registration data sent by the server instance.</param>

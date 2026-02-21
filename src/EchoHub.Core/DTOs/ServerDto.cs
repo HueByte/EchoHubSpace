@@ -21,18 +21,6 @@ public record ServerDto(
 );
 
 /// <summary>
-/// Data required to create a new server entry.
-/// </summary>
-/// <param name="Name">The display name of the server.</param>
-/// <param name="Description">An optional description of the server.</param>
-/// <param name="Host">The host address of the server.</param>
-public record CreateServerDto(
-    string Name,
-    string? Description,
-    string Host
-);
-
-/// <summary>
 /// Data sent by an EchoHub server instance to register or update itself via SignalR.
 /// </summary>
 /// <param name="Name">The display name of the server.</param>
