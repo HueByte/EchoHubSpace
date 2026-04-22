@@ -20,10 +20,11 @@ public interface IServerService
 
     /// <summary>
     /// Registers or updates a server via SignalR, marking it as online.
-    /// An existing server is matched when any of its hosts overlaps with the incoming hosts.
+    /// Identity is carried by <see cref="RegisterServerDto.ClaimToken"/>; hosts are advertised endpoints.
+    /// Returns the resulting <see cref="ServerDto"/> alongside a one-shot claim token on first-ever claim, or an error code.
     /// </summary>
     /// <param name="dto">The registration data sent by the server instance.</param>
-    Task<ServerDto> RegisterServerAsync(RegisterServerDto dto);
+    Task<RegisterServerOutcome> RegisterServerAsync(RegisterServerDto dto);
 
     /// <summary>
     /// Updates the connected user count for a server.

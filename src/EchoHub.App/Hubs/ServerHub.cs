@@ -23,20 +23,30 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
     /// <summary>
     /// Called by an EchoHub server to register/update itself on the server list.
+    /// Returns a <see cref="RegisterServerResult"/>; the connection is never terminated on error,
+    /// the client decides whether to retry.
     /// </summary>
-    public async Task RegisterServer(RegisterServerDto dto)
+    public async Task<RegisterServerResult> RegisterServer(RegisterServerDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name) || dto.Hosts is null || dto.Hosts.Length == 0)
-            return;
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Name) || dto.Hosts is null || dto.Hosts.Length == 0)
+            return new RegisterServerResult(false, null, null, "InvalidInput", null);
 
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-        var server = await serverService.RegisterServerAsync(dto);
+        var outcome = await serverService.RegisterServerAsync(dto);
+
+        if (outcome.Error is not null || outcome.Server is null)
+        {
+            logger.LogWarning("RegisterServer rejected: {Error} (connection {ConnectionId}, hosts {Hosts})",
+                outcome.Error, Context.ConnectionId, string.Join(",", dto.Hosts));
+            return new RegisterServerResult(false, null, null, outcome.Error, outcome.ConflictingHosts);
+        }
+
+        var server = outcome.Server;
 
         lock (Lock)
         {
-            // If this connection was previously mapped to a different server, decrement the old server's count
             if (ConnectionToServer.TryGetValue(Context.ConnectionId, out var previousId) && previousId != server.Id)
             {
                 var remaining = ServerConnectionCount.AddOrUpdate(previousId, 0, (_, count) => count - 1);
@@ -48,10 +58,21 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
             ServerConnectionCount.AddOrUpdate(server.Id, 1, (_, count) => count + 1);
         }
 
-        logger.LogInformation("Server registered: {Name} [{Id}] (connection {ConnectionId})",
-            dto.Name, server.Id, Context.ConnectionId);
+        // Log issuance without the raw token — only the ServerId.
+        if (outcome.ClaimToken is not null)
+        {
+            logger.LogInformation("Claim token issued for server {Id} (connection {ConnectionId})",
+                server.Id, Context.ConnectionId);
+        }
+        else
+        {
+            logger.LogInformation("Server updated: {Name} [{Id}] (connection {ConnectionId})",
+                server.Name, server.Id, Context.ConnectionId);
+        }
 
         await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
+
+        return new RegisterServerResult(true, server.Id, outcome.ClaimToken, null, null);
     }
 
     /// <summary>

@@ -34,6 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Version).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ClaimTokenHash).HasMaxLength(64);
 
             entity.Property(e => e.Hosts)
                 .HasColumnType("jsonb")
@@ -45,6 +46,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             entity.HasIndex(e => e.Hosts).HasMethod("gin");
             entity.HasIndex(e => e.Tags).HasMethod("gin");
+            entity.HasIndex(e => e.ClaimTokenHash).IsUnique();
         });
     }
 }

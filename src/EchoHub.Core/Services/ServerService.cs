@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using EchoHub.Core.DTOs;
 using EchoHub.Core.Entities;
 using EchoHub.Core.Interfaces;
@@ -24,38 +26,52 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     }
 
     /// <inheritdoc />
-    public async Task<ServerDto> RegisterServerAsync(RegisterServerDto dto)
+    public async Task<RegisterServerOutcome> RegisterServerAsync(RegisterServerDto dto)
     {
-        var hosts = (dto.Hosts ?? [])
-            .Where(h => !string.IsNullOrWhiteSpace(h))
-            .Select(h => h.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            return Fail("InvalidInput");
 
-        var tags = (dto.Tags ?? [])
-            .Where(t => !string.IsNullOrWhiteSpace(t))
-            .Select(t => t.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var hosts = NormalizeSet(dto.Hosts);
+        if (hosts.Count == 0)
+            return Fail("InvalidInput");
 
+        var tags = NormalizeSet(dto.Tags);
         var version = string.IsNullOrWhiteSpace(dto.Version) ? "unknown" : dto.Version.Trim();
 
-        var existing = await serverRepository.GetByAnyHostAsync(hosts);
-
-        if (existing is not null)
+        // Authenticated update path: caller presents a token.
+        if (!string.IsNullOrWhiteSpace(dto.ClaimToken))
         {
+            var tokenHash = HashToken(dto.ClaimToken);
+            var existing = await serverRepository.GetByClaimTokenHashAsync(tokenHash);
+            if (existing is null)
+                return Fail("InvalidToken");
+
+            var conflict = await serverRepository.FindHostConflictAsync(hosts, excludeId: existing.Id);
+            if (conflict is not null)
+                return Fail("HostConflict", IntersectHosts(hosts, conflict.Hosts));
+
             existing.Name = dto.Name;
             existing.Description = dto.Description;
             existing.Hosts = hosts;
             existing.UserCount = dto.UserCount;
-            existing.Version = dto.Version;
+            existing.Version = version;
             existing.Tags = tags;
             existing.IsOnline = true;
             existing.LastSeenAt = DateTime.UtcNow;
             await serverRepository.UpdateAsync(existing);
-            return MapToDto(existing);
+
+            return new RegisterServerOutcome(MapToDto(existing), ClaimToken: null, Error: null, ConflictingHosts: null);
         }
 
+        // Claim path: no token presented. Any host overlap with an existing row is a hard reject —
+        // legacy/grandfather adoption is intentionally absent (see claim-token protocol migration).
+        var collision = await serverRepository.GetByAnyHostAsync(hosts);
+        if (collision is not null)
+            return Fail("HostAlreadyClaimed", IntersectHosts(hosts, collision.Hosts));
+
+        // Fresh claim — mint token, store hash, return raw token ONCE.
+        // SECURITY: never log the raw token. Only its hash or the resulting ServerId.
+        var (rawToken, newHash) = GenerateClaimToken();
         var server = new Server
         {
             Id = Guid.NewGuid(),
@@ -65,12 +81,13 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             UserCount = dto.UserCount,
             Version = version,
             Tags = tags,
+            ClaimTokenHash = newHash,
             IsOnline = true,
             LastSeenAt = DateTime.UtcNow,
         };
-
         var created = await serverRepository.AddAsync(server);
-        return MapToDto(created);
+
+        return new RegisterServerOutcome(MapToDto(created), ClaimToken: rawToken, Error: null, ConflictingHosts: null);
     }
 
     /// <inheritdoc />
@@ -112,6 +129,32 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     {
         return await serverRepository.DeleteAsync(id);
     }
+
+    private static RegisterServerOutcome Fail(string error, string[]? conflictingHosts = null) =>
+        new(Server: null, ClaimToken: null, Error: error, ConflictingHosts: conflictingHosts);
+
+    private static List<string> NormalizeSet(IEnumerable<string>? values) =>
+        (values ?? [])
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static string[] IntersectHosts(IEnumerable<string> requested, IEnumerable<string> existing)
+    {
+        var existingSet = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return requested.Where(existingSet.Contains).ToArray();
+    }
+
+    private static (string Raw, string Hash) GenerateClaimToken()
+    {
+        var raw = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        return (raw, HashToken(raw));
+    }
+
+    private static string HashToken(string raw) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 
     private static ServerDto MapToDto(Server server) =>
         new(
