@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using EchoHub.Core.DTOs;
 using EchoHub.Core.Interfaces;
+using EchoHub.Core.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
@@ -23,13 +24,13 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
     /// <summary>
     /// Called by an EchoHub server to register/update itself on the server list.
-    /// Returns a <see cref="RegisterServerResult"/>; the connection is never terminated on error,
+    /// Returns a <see cref="Response{T}"/> of <see cref="RegisterServerResult"/>; the connection is never terminated on error,
     /// the client decides whether to retry.
     /// </summary>
-    public async Task<RegisterServerResult> RegisterServer(RegisterServerDto dto)
+    public async Task<Response<RegisterServerResult>> RegisterServer(RegisterServerDto dto)
     {
         if (dto is null || string.IsNullOrWhiteSpace(dto.Name) || dto.Hosts is null || dto.Hosts.Length == 0)
-            return new RegisterServerResult(false, null, null, "InvalidInput", null);
+            return Respond.Fail<RegisterServerResult>("InvalidInput");
 
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
@@ -40,7 +41,12 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
         {
             logger.LogWarning("RegisterServer rejected: {Error} (connection {ConnectionId}, hosts {Hosts})",
                 outcome.Error, Context.ConnectionId, string.Join(",", dto.Hosts));
-            return new RegisterServerResult(false, null, null, outcome.Error, outcome.ConflictingHosts);
+
+            object? errorData = outcome.ConflictingHosts is { Length: > 0 }
+                ? new { ConflictingHosts = outcome.ConflictingHosts }
+                : null;
+
+            return Respond.Fail<RegisterServerResult>(outcome.Error ?? "UnknownError", data: errorData);
         }
 
         var server = outcome.Server;
@@ -72,7 +78,7 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
 
         await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
 
-        return new RegisterServerResult(true, server.Id, outcome.ClaimToken, null, null);
+        return Respond.Ok(new RegisterServerResult(server.Id, outcome.ClaimToken));
     }
 
     /// <summary>

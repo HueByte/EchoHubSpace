@@ -18,11 +18,11 @@ public class ServersController(IServerService serverService) : ControllerBase
     /// Returns all registered servers.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<IEnumerable<ServerDto>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ServerDto>>>> GetAll()
+    [ProducesResponseType(typeof(Response<IEnumerable<ServerDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Response<IEnumerable<ServerDto>>>> GetAll()
     {
         var servers = await serverService.GetAllServersAsync();
-        return Ok(ApiResponse.Ok(servers));
+        return Ok(Respond.Ok(servers));
     }
 
     /// <summary>
@@ -30,15 +30,15 @@ public class ServersController(IServerService serverService) : ControllerBase
     /// </summary>
     /// <param name="id">The server ID.</param>
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(ApiResponse<ServerDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<ServerDto>>> GetById(Guid id)
+    [ProducesResponseType(typeof(Response<ServerDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Response), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Response<ServerDto>>> GetById(Guid id)
     {
         var server = await serverService.GetServerByIdAsync(id);
         if (server is null)
-            return NotFound(ApiResponse.Fail("Server not found"));
+            return NotFound(Respond.Fail("NotFound", "Server not found"));
 
-        return Ok(ApiResponse.Ok(server));
+        return Ok(Respond.Ok(server));
     }
 
     /// <summary>
@@ -47,15 +47,15 @@ public class ServersController(IServerService serverService) : ControllerBase
     /// <param name="id">The server ID.</param>
     [HttpDelete("{id:guid}")]
     [ApiKeyAuth]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse>> Delete(Guid id)
+    [ProducesResponseType(typeof(Response), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Response), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Response), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Response>> Delete(Guid id)
     {
         var deleted = await serverService.DeleteServerAsync(id);
         if (!deleted)
-            return NotFound(ApiResponse.Fail("Server not found"));
+            return NotFound(Respond.Fail("NotFound", "Server not found"));
 
-        return Ok(ApiResponse.Ok("Server deleted"));
+        return Ok(Respond.Ok());
     }
 }

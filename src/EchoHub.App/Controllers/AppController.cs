@@ -21,16 +21,16 @@ public class AppController(IAppService appService) : ControllerBase
     /// </summary>
     /// <param name="format">The desired response format ("json" or "xml"). Defaults to XML.</param>
     [HttpGet("version")]
-    [ProducesResponseType(typeof(ApiResponse<UpdateManifestDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(Response<UpdateManifestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Response), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetVersion([FromQuery] string? format)
     {
         var manifest = await appService.GetLatestVersionAsync();
         if (manifest is null)
-            return StatusCode(500, ApiResponse.Fail("Failed to fetch version info"));
+            return StatusCode(500, Respond.Fail("VersionFetchFailed", "Failed to fetch version info"));
 
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-            return Ok(ApiResponse.Ok(manifest));
+            return Ok(Respond.Ok(manifest));
 
         using var writer = new StringWriter();
         XmlSerializer.Serialize(writer, manifest);
