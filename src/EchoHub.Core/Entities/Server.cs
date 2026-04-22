@@ -21,14 +21,24 @@ public class Server
     public string? Description { get; set; }
 
     /// <summary>
-    /// Gets or sets the host address used to connect to the server.
+    /// Gets or sets the host addresses used to connect to the server.
     /// </summary>
-    public required string Host { get; set; }
+    public List<string> Hosts { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the number of users currently connected to the server.
     /// </summary>
     public int UserCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the version string reported by the server.
+    /// </summary>
+    public required string Version { get; set; }
+
+    /// <summary>
+    /// Gets or sets the tags advertised by the server.
+    /// </summary>
+    public List<string> Tags { get; set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether the server is currently online.

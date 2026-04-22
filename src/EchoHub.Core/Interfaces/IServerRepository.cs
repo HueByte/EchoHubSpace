@@ -19,10 +19,10 @@ public interface IServerRepository
     Task<Server?> GetByIdAsync(Guid id);
 
     /// <summary>
-    /// Finds a server by its host address.
+    /// Finds a server whose <see cref="Server.Hosts"/> overlaps with any of the given hosts.
     /// </summary>
-    /// <param name="host">The host address to look up.</param>
-    Task<Server?> GetByHostAsync(string host);
+    /// <param name="hosts">The host addresses to look up.</param>
+    Task<Server?> GetByAnyHostAsync(IEnumerable<string> hosts);
 
     /// <summary>
     /// Adds a new server to the store.

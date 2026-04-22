@@ -20,29 +20,30 @@ public interface IServerService
 
     /// <summary>
     /// Registers or updates a server via SignalR, marking it as online.
+    /// An existing server is matched when any of its hosts overlaps with the incoming hosts.
     /// </summary>
     /// <param name="dto">The registration data sent by the server instance.</param>
     Task<ServerDto> RegisterServerAsync(RegisterServerDto dto);
 
     /// <summary>
-    /// Updates the connected user count for a server identified by host.
+    /// Updates the connected user count for a server.
     /// </summary>
-    /// <param name="host">The host address of the server.</param>
+    /// <param name="id">The server ID.</param>
     /// <param name="userCount">The new user count.</param>
-    /// <returns>The updated server, or <c>null</c> if the host was not found.</returns>
-    Task<ServerDto?> UpdateUserCountAsync(string host, int userCount);
+    /// <returns>The updated server, or <c>null</c> if the ID was not found.</returns>
+    Task<ServerDto?> UpdateUserCountAsync(Guid id, int userCount);
 
     /// <summary>
-    /// Refreshes the <c>LastSeenAt</c> timestamp for the given host to indicate it is still alive.
+    /// Refreshes the <c>LastSeenAt</c> timestamp for the given server to indicate it is still alive.
     /// </summary>
-    /// <param name="host">The host address of the server.</param>
-    Task RefreshLastSeenAsync(string host);
+    /// <param name="id">The server ID.</param>
+    Task RefreshLastSeenAsync(Guid id);
 
     /// <summary>
     /// Marks a server as offline and resets its user count to zero.
     /// </summary>
-    /// <param name="host">The host address of the server.</param>
-    Task SetServerOfflineAsync(string host);
+    /// <param name="id">The server ID.</param>
+    Task SetServerOfflineAsync(Guid id);
 
     /// <summary>
     /// Deletes a server by its unique identifier.

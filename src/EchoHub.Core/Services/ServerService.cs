@@ -26,13 +26,30 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     /// <inheritdoc />
     public async Task<ServerDto> RegisterServerAsync(RegisterServerDto dto)
     {
-        var existing = await serverRepository.GetByHostAsync(dto.Host);
+        var hosts = (dto.Hosts ?? [])
+            .Where(h => !string.IsNullOrWhiteSpace(h))
+            .Select(h => h.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var tags = (dto.Tags ?? [])
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var version = string.IsNullOrWhiteSpace(dto.Version) ? "unknown" : dto.Version.Trim();
+
+        var existing = await serverRepository.GetByAnyHostAsync(hosts);
 
         if (existing is not null)
         {
             existing.Name = dto.Name;
             existing.Description = dto.Description;
+            existing.Hosts = hosts;
             existing.UserCount = dto.UserCount;
+            existing.Version = dto.Version;
+            existing.Tags = tags;
             existing.IsOnline = true;
             existing.LastSeenAt = DateTime.UtcNow;
             await serverRepository.UpdateAsync(existing);
@@ -44,8 +61,10 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             Id = Guid.NewGuid(),
             Name = dto.Name,
             Description = dto.Description,
-            Host = dto.Host,
+            Hosts = hosts,
             UserCount = dto.UserCount,
+            Version = version,
+            Tags = tags,
             IsOnline = true,
             LastSeenAt = DateTime.UtcNow,
         };
@@ -55,9 +74,9 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     }
 
     /// <inheritdoc />
-    public async Task<ServerDto?> UpdateUserCountAsync(string host, int userCount)
+    public async Task<ServerDto?> UpdateUserCountAsync(Guid id, int userCount)
     {
-        var server = await serverRepository.GetByHostAsync(host);
+        var server = await serverRepository.GetByIdAsync(id);
         if (server is null) return null;
 
         server.UserCount = userCount;
@@ -67,9 +86,9 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     }
 
     /// <inheritdoc />
-    public async Task RefreshLastSeenAsync(string host)
+    public async Task RefreshLastSeenAsync(Guid id)
     {
-        var server = await serverRepository.GetByHostAsync(host);
+        var server = await serverRepository.GetByIdAsync(id);
         if (server is null) return;
 
         server.LastSeenAt = DateTime.UtcNow;
@@ -77,9 +96,9 @@ public class ServerService(IServerRepository serverRepository) : IServerService
     }
 
     /// <inheritdoc />
-    public async Task SetServerOfflineAsync(string host)
+    public async Task SetServerOfflineAsync(Guid id)
     {
-        var server = await serverRepository.GetByHostAsync(host);
+        var server = await serverRepository.GetByIdAsync(id);
         if (server is not null)
         {
             server.IsOnline = false;
@@ -99,8 +118,10 @@ public class ServerService(IServerRepository serverRepository) : IServerService
             server.Id,
             server.Name,
             server.Description,
-            server.Host,
+            server.Hosts.ToArray(),
             server.UserCount,
+            server.Version,
+            server.Tags.ToArray(),
             server.IsOnline,
             server.CreatedAt
         );
