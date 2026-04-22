@@ -37,13 +37,6 @@ public class ServerRepository(AppDbContext context) : IServerRepository
     }
 
     /// <inheritdoc />
-    public async Task<Server?> GetByClaimTokenHashAsync(string tokenHash)
-    {
-        return await context.Servers
-            .FirstOrDefaultAsync(s => s.ClaimTokenHash == tokenHash);
-    }
-
-    /// <inheritdoc />
     public async Task<Server?> FindHostConflictAsync(IEnumerable<string> hosts, Guid excludeId)
     {
         var hostSet = hosts.ToHashSet(StringComparer.OrdinalIgnoreCase);

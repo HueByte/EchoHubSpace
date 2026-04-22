@@ -25,12 +25,6 @@ public interface IServerRepository
     Task<Server?> GetByAnyHostAsync(IEnumerable<string> hosts);
 
     /// <summary>
-    /// Finds a server by its claim token hash.
-    /// </summary>
-    /// <param name="tokenHash">The SHA-256 hex hash of the claim token.</param>
-    Task<Server?> GetByClaimTokenHashAsync(string tokenHash);
-
-    /// <summary>
     /// Finds a server (other than <paramref name="excludeId"/>) whose hosts overlap with any of the given hosts.
     /// Used to detect host conflicts during an authenticated update.
     /// </summary>

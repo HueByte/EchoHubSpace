@@ -41,12 +41,6 @@ public class Server
     public List<string> Tags { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the SHA-256 hex hash of the claim token for this server.
-    /// Null for legacy rows that predate the claim-token protocol.
-    /// </summary>
-    public string? ClaimTokenHash { get; set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether the server is currently online.
     /// </summary>
     public bool IsOnline { get; set; }

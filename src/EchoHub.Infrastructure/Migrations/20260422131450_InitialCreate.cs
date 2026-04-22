@@ -22,7 +22,6 @@ namespace EchoHub.Infrastructure.Migrations
                     UserCount = table.Column<int>(type: "integer", nullable: false),
                     Version = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Tags = table.Column<string>(type: "jsonb", nullable: false),
-                    ClaimTokenHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     IsOnline = table.Column<bool>(type: "boolean", nullable: false),
                     LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -31,12 +30,6 @@ namespace EchoHub.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Servers", x => x.Id);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Servers_ClaimTokenHash",
-                table: "Servers",
-                column: "ClaimTokenHash",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Servers_Hosts",

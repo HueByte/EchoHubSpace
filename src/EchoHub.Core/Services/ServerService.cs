@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using EchoHub.Core.DTOs;
 using EchoHub.Core.Entities;
 using EchoHub.Core.Interfaces;
@@ -9,10 +7,11 @@ namespace EchoHub.Core.Services;
 /// <summary>
 /// Default implementation of <see cref="IServerService"/> that manages server lifecycle operations.
 /// </summary>
-public class ServerService(IServerRepository serverRepository) : IServerService
+public class ServerService(
+    IServerRepository serverRepository,
+    IClaimTokenService tokenService) : IServerService
 {
     private const int MaxTagsPerServer = 10;
-
 
     /// <inheritdoc />
     public async Task<IEnumerable<ServerDto>> GetAllServersAsync()
@@ -41,56 +40,72 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         var tags = NormalizeSet(dto.Tags).Take(MaxTagsPerServer).ToList();
         var version = string.IsNullOrWhiteSpace(dto.Version) ? "unknown" : dto.Version.Trim();
 
-        // Authenticated update path: caller presents a token.
+        // Authenticated path: caller presents a signed token.
         if (!string.IsNullOrWhiteSpace(dto.ClaimToken))
         {
-            var tokenHash = HashToken(dto.ClaimToken);
-            var existing = await serverRepository.GetByClaimTokenHashAsync(tokenHash);
-            if (existing is null)
+            if (!tokenService.TryVerify(dto.ClaimToken, out var serverId))
                 return Fail("InvalidToken");
 
-            var conflict = await serverRepository.FindHostConflictAsync(hosts, excludeId: existing.Id);
-            if (conflict is not null)
-                return Fail("HostConflict", IntersectHosts(hosts, conflict.Hosts));
+            var existing = await serverRepository.GetByIdAsync(serverId);
+            if (existing is not null)
+            {
+                var conflict = await serverRepository.FindHostConflictAsync(hosts, excludeId: existing.Id);
+                if (conflict is not null)
+                    return Fail("HostConflict", IntersectHosts(hosts, conflict.Hosts));
 
-            existing.Name = dto.Name;
-            existing.Description = dto.Description;
-            existing.Hosts = hosts;
-            existing.UserCount = dto.UserCount;
-            existing.Version = version;
-            existing.Tags = tags;
-            existing.IsOnline = true;
-            existing.LastSeenAt = DateTime.UtcNow;
-            await serverRepository.UpdateAsync(existing);
+                Apply(existing, dto.Name, dto.Description, hosts, dto.UserCount, version, tags);
+                await serverRepository.UpdateAsync(existing);
+                return Success(existing);
+            }
 
-            return new RegisterServerOutcome(MapToDto(existing), ClaimToken: null, Error: null, ConflictingHosts: null);
+            // Row doesn't exist — either the API restarted (InMemory state lost) or an admin
+            // deleted the row. The signature is valid, so the caller is who they claim to be:
+            // re-create the row with the embedded serverId so ServerId stays stable.
+            var freshConflict = await serverRepository.GetByAnyHostAsync(hosts);
+            if (freshConflict is not null)
+                return Fail("HostConflict", IntersectHosts(hosts, freshConflict.Hosts));
+
+            var restored = new Server
+            {
+                Id = serverId,
+                Name = dto.Name,
+                Description = dto.Description,
+                Hosts = hosts,
+                UserCount = dto.UserCount,
+                Version = version,
+                Tags = tags,
+                IsOnline = true,
+                LastSeenAt = DateTime.UtcNow,
+            };
+            var createdRestored = await serverRepository.AddAsync(restored);
+            // No new token — the caller's existing token is still valid.
+            return Success(createdRestored);
         }
 
         // Claim path: no token presented. Any host overlap with an existing row is a hard reject —
-        // legacy/grandfather adoption is intentionally absent (see claim-token protocol migration).
+        // new tokens are only minted here.
         var collision = await serverRepository.GetByAnyHostAsync(hosts);
         if (collision is not null)
             return Fail("HostAlreadyClaimed", IntersectHosts(hosts, collision.Hosts));
 
-        // Fresh claim — mint token, store hash, return raw token ONCE.
-        // SECURITY: never log the raw token. Only its hash or the resulting ServerId.
-        var (rawToken, newHash) = GenerateClaimToken();
+        var newId = Guid.NewGuid();
+        // SECURITY: the raw token is returned to the caller once, wrapped in the response envelope.
+        // Never log it; only the ServerId appears in logs.
+        var token = tokenService.Issue(newId);
         var server = new Server
         {
-            Id = Guid.NewGuid(),
+            Id = newId,
             Name = dto.Name,
             Description = dto.Description,
             Hosts = hosts,
             UserCount = dto.UserCount,
             Version = version,
             Tags = tags,
-            ClaimTokenHash = newHash,
             IsOnline = true,
             LastSeenAt = DateTime.UtcNow,
         };
         var created = await serverRepository.AddAsync(server);
-
-        return new RegisterServerOutcome(MapToDto(created), ClaimToken: rawToken, Error: null, ConflictingHosts: null);
+        return new RegisterServerOutcome(MapToDto(created), ClaimToken: token, Error: null, ConflictingHosts: null);
     }
 
     /// <inheritdoc />
@@ -133,6 +148,22 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         return await serverRepository.DeleteAsync(id);
     }
 
+    private static void Apply(Server server, string name, string? description, List<string> hosts,
+        int userCount, string version, List<string> tags)
+    {
+        server.Name = name;
+        server.Description = description;
+        server.Hosts = hosts;
+        server.UserCount = userCount;
+        server.Version = version;
+        server.Tags = tags;
+        server.IsOnline = true;
+        server.LastSeenAt = DateTime.UtcNow;
+    }
+
+    private static RegisterServerOutcome Success(Server server) =>
+        new(MapToDto(server), ClaimToken: null, Error: null, ConflictingHosts: null);
+
     private static RegisterServerOutcome Fail(string error, string[]? conflictingHosts = null) =>
         new(Server: null, ClaimToken: null, Error: error, ConflictingHosts: conflictingHosts);
 
@@ -148,16 +179,6 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         var existingSet = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
         return requested.Where(existingSet.Contains).ToArray();
     }
-
-    private static (string Raw, string Hash) GenerateClaimToken()
-    {
-        var raw = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        return (raw, HashToken(raw));
-    }
-
-    private static string HashToken(string raw) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
 
     private static ServerDto MapToDto(Server server) =>
         new(
