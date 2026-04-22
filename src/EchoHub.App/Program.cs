@@ -21,9 +21,7 @@ try
 
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .WriteTo.Console()
-        .WriteTo.File("logs/echohub-.log", rollingInterval: RollingInterval.Day));
+        .ReadFrom.Services(services));
 
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();

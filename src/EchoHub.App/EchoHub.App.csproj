@@ -25,6 +25,9 @@
       <SwaggerEnvVars>SkipMigrations=true</SwaggerEnvVars>
     </PropertyGroup>
 
+    <!-- Ensure the local `swagger` CLI (declared in ../../dotnet-tools.json) is installed -->
+    <Exec Command="dotnet tool restore" WorkingDirectory="$(ProjectDir)../.." ContinueOnError="true" />
+
     <!-- Generate swagger.json to client/src/api folder -->
     <Exec Command="dotnet swagger tofile --output ../client/src/api/swagger.json $(OutputPath)$(AssemblyName).dll v1" WorkingDirectory="$(ProjectDir)" EnvironmentVariables="$(SwaggerEnvVars)" ContinueOnError="true" />
 

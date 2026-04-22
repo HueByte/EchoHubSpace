@@ -20,6 +20,8 @@
   --accent-dim: rgba(255, 255, 255, 0.08);
   --online: #22c55e;
   --offline: #555555;
+  --link: #f8af8e;
+  --link-hover: #fac6aa;
 }
 
 html, body {

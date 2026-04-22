@@ -11,6 +11,9 @@ namespace EchoHub.Core.Services;
 /// </summary>
 public class ServerService(IServerRepository serverRepository) : IServerService
 {
+    private const int MaxTagsPerServer = 10;
+
+
     /// <inheritdoc />
     public async Task<IEnumerable<ServerDto>> GetAllServersAsync()
     {
@@ -35,7 +38,7 @@ public class ServerService(IServerRepository serverRepository) : IServerService
         if (hosts.Count == 0)
             return Fail("InvalidInput");
 
-        var tags = NormalizeSet(dto.Tags);
+        var tags = NormalizeSet(dto.Tags).Take(MaxTagsPerServer).ToList();
         var version = string.IsNullOrWhiteSpace(dto.Version) ? "unknown" : dto.Version.Trim();
 
         // Authenticated update path: caller presents a token.
