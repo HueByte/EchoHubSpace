@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using EchoHub.Core.DTOs;
 using EchoHub.Core.Interfaces;
+using EchoHub.Core.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
@@ -13,45 +14,71 @@ namespace EchoHub.App.Hubs;
 /// </summary>
 public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> logger) : Hub
 {
-    // Maps connectionId -> host for reverse lookup on disconnect
-    private static readonly ConcurrentDictionary<string, string> ConnectionToHost = new();
+    // Maps connectionId -> server Id for reverse lookup on disconnect
+    private static readonly ConcurrentDictionary<string, Guid> ConnectionToServer = new();
 
-    // Tracks active connection count per host so we only go offline when all connections drop
-    private static readonly ConcurrentDictionary<string, int> HostConnectionCount = new();
+    // Tracks active connection count per server so we only go offline when all connections drop
+    private static readonly ConcurrentDictionary<Guid, int> ServerConnectionCount = new();
 
     private static readonly object Lock = new();
 
     /// <summary>
     /// Called by an EchoHub server to register/update itself on the server list.
+    /// Returns a <see cref="Response{T}"/> of <see cref="RegisterServerResult"/>; the connection is never terminated on error,
+    /// the client decides whether to retry.
     /// </summary>
-    public async Task RegisterServer(RegisterServerDto dto)
+    public async Task<Response<RegisterServerResult>> RegisterServer(RegisterServerDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Host) || string.IsNullOrWhiteSpace(dto.Name))
-            return;
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Name) || dto.Hosts is null || dto.Hosts.Length == 0)
+            return Respond.Fail<RegisterServerResult>("InvalidInput");
 
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-        var server = await serverService.RegisterServerAsync(dto);
+        var outcome = await serverService.RegisterServerAsync(dto);
+
+        if (outcome.Error is not null || outcome.Server is null)
+        {
+            logger.LogWarning("RegisterServer rejected: {Error} (connection {ConnectionId}, hosts {Hosts})",
+                outcome.Error, Context.ConnectionId, string.Join(",", dto.Hosts));
+
+            object? errorData = outcome.ConflictingHosts is { Length: > 0 }
+                ? new { ConflictingHosts = outcome.ConflictingHosts }
+                : null;
+
+            return Respond.Fail<RegisterServerResult>(outcome.Error ?? "UnknownError", data: errorData);
+        }
+
+        var server = outcome.Server;
 
         lock (Lock)
         {
-            // If this connection was previously mapped to a different host, decrement the old host's count
-            if (ConnectionToHost.TryGetValue(Context.ConnectionId, out var previousHost) && previousHost != dto.Host)
+            if (ConnectionToServer.TryGetValue(Context.ConnectionId, out var previousId) && previousId != server.Id)
             {
-                var remaining = HostConnectionCount.AddOrUpdate(previousHost, 0, (_, count) => count - 1);
+                var remaining = ServerConnectionCount.AddOrUpdate(previousId, 0, (_, count) => count - 1);
                 if (remaining <= 0)
-                    HostConnectionCount.TryRemove(previousHost, out _);
+                    ServerConnectionCount.TryRemove(previousId, out _);
             }
 
-            ConnectionToHost[Context.ConnectionId] = dto.Host;
-            HostConnectionCount.AddOrUpdate(dto.Host, 1, (_, count) => count + 1);
+            ConnectionToServer[Context.ConnectionId] = server.Id;
+            ServerConnectionCount.AddOrUpdate(server.Id, 1, (_, count) => count + 1);
         }
 
-        logger.LogInformation("Server registered: {Name} at {Host} (connection {ConnectionId})",
-            dto.Name, dto.Host, Context.ConnectionId);
+        // Log issuance without the raw token — only the ServerId.
+        if (outcome.ClaimToken is not null)
+        {
+            logger.LogInformation("Claim token issued for server {Id} (connection {ConnectionId})",
+                server.Id, Context.ConnectionId);
+        }
+        else
+        {
+            logger.LogInformation("Server updated: {Name} [{Id}] (connection {ConnectionId})",
+                server.Name, server.Id, Context.ConnectionId);
+        }
 
         await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
+
+        return Respond.Ok(new RegisterServerResult(server.Id, outcome.ClaimToken));
     }
 
     /// <summary>
@@ -59,13 +86,13 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     /// </summary>
     public async Task UpdateUserCount(int userCount)
     {
-        if (!ConnectionToHost.TryGetValue(Context.ConnectionId, out var host))
+        if (!ConnectionToServer.TryGetValue(Context.ConnectionId, out var serverId))
             return;
 
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-        var server = await serverService.UpdateUserCountAsync(host, userCount);
+        var server = await serverService.UpdateUserCountAsync(serverId, userCount);
         if (server is not null)
             await Clients.Group("web-clients").SendAsync("ServerUpdated", server);
     }
@@ -76,25 +103,25 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     /// </summary>
     public async Task Heartbeat()
     {
-        if (!ConnectionToHost.TryGetValue(Context.ConnectionId, out var host))
+        if (!ConnectionToServer.TryGetValue(Context.ConnectionId, out var serverId))
             return;
 
         using var scope = scopeFactory.CreateScope();
         var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
-        await serverService.RefreshLastSeenAsync(host);
+        await serverService.RefreshLastSeenAsync(serverId);
 
-        logger.LogDebug("Heartbeat received from {Host} (connection {ConnectionId})", host, Context.ConnectionId);
+        logger.LogDebug("Heartbeat received from server {Id} (connection {ConnectionId})", serverId, Context.ConnectionId);
     }
 
     /// <summary>
-    /// Returns all tracked connection IDs for a given host.
+    /// Returns all tracked connection IDs for a given server.
     /// Used by the cleanup service to send alive checks.
     /// </summary>
-    /// <param name="host">The host address to look up connections for.</param>
-    public static IEnumerable<string> GetConnectionIdsForHost(string host)
+    /// <param name="serverId">The server ID to look up connections for.</param>
+    public static IEnumerable<string> GetConnectionIdsForServer(Guid serverId)
     {
-        return ConnectionToHost
-            .Where(kvp => kvp.Value == host)
+        return ConnectionToServer
+            .Where(kvp => kvp.Value == serverId)
             .Select(kvp => kvp.Key);
     }
 
@@ -107,37 +134,37 @@ public class ServerHub(IServiceScopeFactory scopeFactory, ILogger<ServerHub> log
     }
 
     /// <summary>
-    /// Handles client disconnection by decrementing the connection count for the associated host.
-    /// When all connections for a host are dropped, the server is marked offline and web clients are notified.
+    /// Handles client disconnection by decrementing the connection count for the associated server.
+    /// When all connections for a server are dropped, the server is marked offline and web clients are notified.
     /// </summary>
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (ConnectionToHost.TryRemove(Context.ConnectionId, out var host))
+        if (ConnectionToServer.TryRemove(Context.ConnectionId, out var serverId))
         {
             bool shouldGoOffline;
             lock (Lock)
             {
-                var remaining = HostConnectionCount.AddOrUpdate(host, 0, (_, count) => count - 1);
+                var remaining = ServerConnectionCount.AddOrUpdate(serverId, 0, (_, count) => count - 1);
                 shouldGoOffline = remaining <= 0;
                 if (shouldGoOffline)
-                    HostConnectionCount.TryRemove(host, out _);
+                    ServerConnectionCount.TryRemove(serverId, out _);
             }
 
             if (shouldGoOffline)
             {
-                logger.LogInformation("Server offline: {Host} (last connection {ConnectionId} dropped)",
-                    host, Context.ConnectionId);
+                logger.LogInformation("Server offline: {Id} (last connection {ConnectionId} dropped)",
+                    serverId, Context.ConnectionId);
 
                 using var scope = scopeFactory.CreateScope();
                 var serverService = scope.ServiceProvider.GetRequiredService<IServerService>();
 
-                await serverService.SetServerOfflineAsync(host);
-                await Clients.Group("web-clients").SendAsync("ServerOffline", new { Host = host });
+                await serverService.SetServerOfflineAsync(serverId);
+                await Clients.Group("web-clients").SendAsync("ServerOffline", new { Id = serverId });
             }
             else
             {
-                logger.LogDebug("Connection {ConnectionId} dropped for {Host}, other connections still active",
-                    Context.ConnectionId, host);
+                logger.LogDebug("Connection {ConnectionId} dropped for server {Id}, other connections still active",
+                    Context.ConnectionId, serverId);
             }
         }
 

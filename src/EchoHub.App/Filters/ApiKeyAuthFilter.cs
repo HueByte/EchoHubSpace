@@ -16,14 +16,14 @@ public class ApiKeyAuthFilter(IConfiguration configuration) : IAuthorizationFilt
     {
         if (!context.HttpContext.Request.Headers.TryGetValue(ApiKeyHeaderName, out var providedKey))
         {
-            context.Result = new UnauthorizedObjectResult(ApiResponse.Fail("API key is required"));
+            context.Result = new UnauthorizedObjectResult(Respond.Fail("ApiKeyRequired", "API key is required"));
             return;
         }
 
         var configuredKey = configuration["ApiKey"];
         if (string.IsNullOrEmpty(configuredKey) || !string.Equals(configuredKey, providedKey, StringComparison.Ordinal))
         {
-            context.Result = new UnauthorizedObjectResult(ApiResponse.Fail("Invalid API key"));
+            context.Result = new UnauthorizedObjectResult(Respond.Fail("InvalidApiKey", "Invalid API key"));
         }
     }
 }

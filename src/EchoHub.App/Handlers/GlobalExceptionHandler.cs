@@ -16,7 +16,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         httpContext.Response.ContentType = "application/json";
 
         await httpContext.Response.WriteAsJsonAsync(
-            ApiResponse.Fail("An unexpected error occurred"),
+            Respond.Fail("InternalServerError", "An unexpected error occurred"),
             cancellationToken);
 
         return true;

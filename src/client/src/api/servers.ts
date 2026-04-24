@@ -4,8 +4,10 @@ export interface Server {
   id: string;
   name: string;
   description: string | null;
-  host: string;
+  hosts: string[];
   userCount: number;
+  version: string;
+  tags: string[];
   isOnline: boolean;
   createdAt: string;
 }

@@ -19,10 +19,18 @@ public interface IServerRepository
     Task<Server?> GetByIdAsync(Guid id);
 
     /// <summary>
-    /// Finds a server by its host address.
+    /// Finds a server whose <see cref="Server.Hosts"/> overlaps with any of the given hosts.
     /// </summary>
-    /// <param name="host">The host address to look up.</param>
-    Task<Server?> GetByHostAsync(string host);
+    /// <param name="hosts">The host addresses to look up.</param>
+    Task<Server?> GetByAnyHostAsync(IEnumerable<string> hosts);
+
+    /// <summary>
+    /// Finds a server (other than <paramref name="excludeId"/>) whose hosts overlap with any of the given hosts.
+    /// Used to detect host conflicts during an authenticated update.
+    /// </summary>
+    /// <param name="hosts">The host addresses to check for conflicts.</param>
+    /// <param name="excludeId">The server ID to exclude from the search (the one doing the update).</param>
+    Task<Server?> FindHostConflictAsync(IEnumerable<string> hosts, Guid excludeId);
 
     /// <summary>
     /// Adds a new server to the store.

@@ -25,10 +25,25 @@ public class ServerRepository(AppDbContext context) : IServerRepository
     }
 
     /// <inheritdoc />
-    public async Task<Server?> GetByHostAsync(string host)
+    public async Task<Server?> GetByAnyHostAsync(IEnumerable<string> hosts)
     {
-        return await context.Servers
-            .FirstOrDefaultAsync(s => s.Host == host);
+        var hostSet = hosts.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (hostSet.Count == 0) return null;
+
+        // Hosts is stored as a value-converted jsonb column, so overlap predicates
+        // can't be translated to SQL — materialize and filter client-side.
+        var servers = await context.Servers.ToListAsync();
+        return servers.FirstOrDefault(s => s.Hosts.Any(h => hostSet.Contains(h)));
+    }
+
+    /// <inheritdoc />
+    public async Task<Server?> FindHostConflictAsync(IEnumerable<string> hosts, Guid excludeId)
+    {
+        var hostSet = hosts.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (hostSet.Count == 0) return null;
+
+        var servers = await context.Servers.Where(s => s.Id != excludeId).ToListAsync();
+        return servers.FirstOrDefault(s => s.Hosts.Any(h => hostSet.Contains(h)));
     }
 
     /// <inheritdoc />

@@ -49,24 +49,24 @@ public class InactiveServerCleanupService(
                 foreach (var server in staleServers)
                 {
                     var staleDuration = DateTime.UtcNow - server.LastSeenAt;
-                    var connectionIds = ServerHub.GetConnectionIdsForHost(server.Host).ToList();
+                    var connectionIds = ServerHub.GetConnectionIdsForServer(server.Id).ToList();
 
                     if (staleDuration > UnresponsiveThreshold || connectionIds.Count == 0)
                     {
                         // Server didn't respond to pings, or has no tracked connections — mark offline
                         logger.LogWarning(
-                            "Server {Host} unresponsive (stale for {Duration}, {Connections} connections) — marking offline",
-                            server.Host, staleDuration, connectionIds.Count);
+                            "Server {Id} unresponsive (stale for {Duration}, {Connections} connections) — marking offline",
+                            server.Id, staleDuration, connectionIds.Count);
 
-                        await serverService.SetServerOfflineAsync(server.Host);
+                        await serverService.SetServerOfflineAsync(server.Id);
                         await hubContext.Clients.Group("web-clients")
-                            .SendAsync("ServerOffline", new { server.Host }, stoppingToken);
+                            .SendAsync("ServerOffline", new { Id = server.Id }, stoppingToken);
                     }
                     else
                     {
                         // Send alive check — client should respond with Heartbeat()
-                        logger.LogDebug("Sending alive check to {Host} ({Count} connections)",
-                            server.Host, connectionIds.Count);
+                        logger.LogDebug("Sending alive check to server {Id} ({Count} connections)",
+                            server.Id, connectionIds.Count);
 
                         foreach (var connectionId in connectionIds)
                         {

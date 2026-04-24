@@ -2,6 +2,7 @@ using EchoHub.App.Handlers;
 using EchoHub.App.Hubs;
 using EchoHub.App.Services;
 using EchoHub.Core.Interfaces;
+using EchoHub.Core.Models;
 using EchoHub.Core.Services;
 using EchoHub.Infrastructure.Data;
 using EchoHub.Infrastructure.Repositories;
@@ -21,9 +22,7 @@ try
 
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .WriteTo.Console()
-        .WriteTo.File("logs/echohub-.log", rollingInterval: RollingInterval.Day));
+        .ReadFrom.Services(services));
 
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();
@@ -31,6 +30,19 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
+
+    builder.Services.AddOptions<ClaimOptions>()
+        .Bind(builder.Configuration.GetSection(ClaimOptions.SectionName))
+        .Validate(o => !string.IsNullOrWhiteSpace(o.SigningKey),
+            $"{ClaimOptions.SectionName}:SigningKey is required (base64, >=32 bytes)")
+        .Validate(o =>
+        {
+            try { return Convert.FromBase64String(o.SigningKey).Length >= 32; }
+            catch { return false; }
+        }, $"{ClaimOptions.SectionName}:SigningKey must be valid base64 decoding to at least 32 bytes")
+        .ValidateOnStart();
+
+    builder.Services.AddSingleton<IClaimTokenService, ClaimTokenService>();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseInMemoryDatabase("EchoHub"));
